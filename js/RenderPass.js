@@ -3,6 +3,7 @@
  */
 
 THREE.RenderPass = function ( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
+
 	THREE.Pass.call( this );
 
 	this.scene = scene;
@@ -16,6 +17,7 @@ THREE.RenderPass = function ( scene, camera, overrideMaterial, clearColor, clear
 	this.clear = true;
 	this.clearDepth = false;
 	this.needsSwap = false;
+
 };
 
 THREE.RenderPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
