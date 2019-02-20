@@ -1,70 +1,187 @@
-//thanks to the Aviator tutorial
-//https://tympanus.net/codrops/2016/04/26/the-aviator-animating-basic-3d-scene-threejs/
-var scene, camera, FOV, aspectRatio, nearPlane, farPlane, HEIGHT, WIDTH, renderer, container;
-var hemisphereLight, shadowLight;
+var MARGIN = 0;
 
+var SCREEN_WIDTH = window.innerWidth;
+var SCREEN_HEIGHT = window.innerHeight - 2 * MARGIN;
+var container;
+var camera, scene, renderer;
+var materials, current_material;
+var light, pointLight, ambientLight;
+var effect, resolution;
+var composer, effectFXAA;
+var effectController;
 
-function handleWindowResize(){
-	HEIGHT = window.innerHeight;
-	WIDTH = window.innerWidth;
-	renderer.setSize(WIDTH, HEIGHT);
-	camera.aspect = WIDTH / HEIGHT;
-	camera.updateProjectionMatrix();
-}
+var time = 0;
+var clock = new THREE.Clock();
+
+init();
+animate();
 
 function init() {
-	createScene();
-	createLights();
-	loop();
-}
+	// CAMERA
+	camera = new THREE.PerspectiveCamera( 45, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
+	camera.position.set( - 500, 500, 1500 );
 
-function createScene(){
-	HEIGHT = window.innerHeight;
-	WIDTH = window.innerWidth;
-
+	// SCENE
 	scene = new THREE.Scene();
+	scene.background = new THREE.Color( 0x050505 );
 
-	scene.fog = new THREE.Fog(0xf7d9aa, 100, 950);
+	// LIGHTS
+	light = new THREE.DirectionalLight( 0xffffff );
+	light.position.set( 0.5, 0.5, 1 );
+	scene.add( light );
 
-	aspectRatio = WIDTH/HEIGHT;
-	FOV = 50;
-	nearPlane = 1;
-	farPlane = 10000;
-	camera = new THREE.PerspectiveCamera(FOV, aspectRatio, nearPlane, farPlane);
-	camera.position = (0, 200, 100);
+	pointLight = new THREE.PointLight( 0xff3300 );
+	pointLight.position.set( 0, 0, 100 );
+	scene.add( pointLight );
 
-	renderer = new THREE.WebGLRenderer({alpha: true, antialias: true});
-	renderer.setSize(WIDTH, HEIGHT);
-	renderer.shadowMap.enable = true;
+	ambientLight = new THREE.AmbientLight( 0x080808 );
+	scene.add( ambientLight );
 
-	container = document.getElementById('world');
+	// MATERIALS
+	material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+
+	// MARCHING CUBES
+
+	resolution = 28;
+	effect = new THREE.MarchingCubes( resolution, material, true, true );
+	effect.position.set( 0, 0, 0 );
+	effect.scale.set( 700, 700, 700 );
+
+	effect.enableUvs = false;
+	effect.enableColors = false;
+
+	scene.add( effect );
+
+	// RENDERER
+	renderer = new THREE.WebGLRenderer();
+	renderer.setPixelRatio( window.devicePixelRatio );
+	renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+
+	renderer.domElement.style.position = "absolute";
+	renderer.domElement.style.top = MARGIN + "px";
+	renderer.domElement.style.left = "0px";
+	
+	container = document.getElementById("container");
 	container.appendChild(renderer.domElement);
+	renderer.gammaInput = true;
+	renderer.gammaOutput = true;
 
-	window.addEventListener('resize', handleWindowResize, false);
+	// COMPOSER
+	renderer.autoClear = false;
+
+	var renderTargetParameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBuffer: false };
+	var renderTarget = new THREE.WebGLRenderTarget( SCREEN_WIDTH, SCREEN_HEIGHT, renderTargetParameters );
+
+	var renderModel = new THREE.RenderPass( scene, camera);
+
+	composer = new THREE.EffectComposer( renderer, renderTarget );
+	composer.addPass( renderModel );
+
+	// GUI
+	setupGui();
+
+	// EVENTS
+	window.addEventListener( 'resize', onWindowResize, false );
 }
 
-function createLights(){
-	hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x000000, 0.9);
-	shadowLight = new THREE.DirectionalLight(0xffffff, 0.9);
+//
 
-	shadowLight.position.set(150, 350, 350);
-	shadowLight.castShadow = true;
-	shadowLight.shadow.camera.left = -400;
-	shadowLight.shadow.camera.right = 400;
-	shadowLight.shadow.camera.top = 400;
-	shadowLight.shadow.camera.bottom = -400;
-	shadowLight.shadow.camera.near = 1;
-	shadowLight.shadow.camera.far = 1000;
-	shadowLight.shadow.mapSize.width = 2048;
-	shadowLight.shadow.mapSize.height = 2048;
+function onWindowResize() {
 
-	scene.add(hemisphereLight);
-	scene.add(shadowLight);
+	SCREEN_WIDTH = window.innerWidth;
+	SCREEN_HEIGHT = window.innerHeight - 2 * MARGIN;
+
+	camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+	composer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
+
+	// effectFXAA.uniforms[ 'resolution' ].value.set( 1 / SCREEN_WIDTH, 1 / SCREEN_HEIGHT );
 }
 
-function loop(){
-	renderer.render(scene, camera);
-	requestAnimationFrame(loop);
+function setupGui() {
+	effectController = {
+				material: "shiny",
+				speed: 1.0,
+				numBlobs: 2,
+				resolution: 28,
+				isolation: 80,
+				floor: true,
+				wallx: false,
+				wallz: false,
+				hue: 0.0,
+				saturation: 0.8,
+				lightness: 0.1,
+				lhue: 0.04,
+				lsaturation: 1.0,
+				llightness: 0.5,
+				lx: 0.5,
+				ly: 0.5,
+				lz: 1.0,
+				postprocessing: false,
+				dummy: function () {}
+			};
 }
 
-window.addEventListener('load', init, false);
+// this controls content of marching cubes voxel field
+
+function updateCubes( object, time, numblobs, floor, wallx, wallz ) {
+
+	object.reset();
+
+	// fill the field with some metaballs
+	var i, ballx, bally, ballz, subtract, strength;
+
+	subtract = 12;
+	strength = 1.2 / ( ( Math.sqrt( numblobs ) - 1 ) / 4 + 1 );
+
+	for ( i = 0; i < numblobs; i ++ ) {
+		ballx = Math.sin( i + 1.26 * time * ( 1.03 + 0.5 * Math.cos( 0.21 * i ) ) ) * 0.27 + 0.5;
+		bally = Math.abs( Math.cos( i + 1.12 * time * Math.cos( 1.22 + 0.1424 * i ) ) ) * 0.77; // dip into the floor
+		ballz = Math.cos( i + 1.32 * time * 0.1 * Math.sin( ( 0.92 + 0.53 * i ) ) ) * 0.27 + 0.5;
+		object.addBall( ballx, bally, ballz, strength, subtract );
+	}
+
+	if ( floor ) object.addPlaneY( 2, 12 );
+	if ( wallz ) object.addPlaneZ( 2, 12 );
+	if ( wallx ) object.addPlaneX( 2, 12 );
+}
+
+function animate() {
+	requestAnimationFrame( animate );
+	render();
+}
+
+function render() {
+	var delta = clock.getDelta();
+	time += delta * effectController.speed * 0.5;
+
+	// marching cubes
+	if ( effectController.resolution !== resolution ) {
+		resolution = effectController.resolution;
+		effect.init( Math.floor( resolution ) );
+	}
+
+	if ( effectController.isolation !== effect.isolation ) {
+		effect.isolation = effectController.isolation;
+	}
+
+	updateCubes( effect, time, effectController.numBlobs, effectController.floor, effectController.wallx, effectController.wallz );
+
+	// lights
+	light.position.set( effectController.lx, effectController.ly, effectController.lz );
+	light.position.normalize();
+
+	pointLight.color.setHSL( effectController.lhue, effectController.lsaturation, effectController.llightness );
+
+	// render
+	if ( effectController.postprocessing ) {
+		composer.render( delta );
+	} else {
+		renderer.clear();
+		renderer.render( scene, camera );
+	}
+
+}
+
