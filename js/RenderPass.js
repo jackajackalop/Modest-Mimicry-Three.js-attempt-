@@ -47,8 +47,10 @@ THREE.RenderPass.prototype = Object.assign( Object.create( THREE.Pass.prototype 
 			renderer.clearDepth();
 
 		}
-
-		renderer.render( this.scene, this.camera, this.renderToScreen ? null : readBuffer, this.clear );
+		//TODO check here if rendering problems later
+		// renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+		// renderer.clear();
+		renderer.render( this.scene, this.camera, this.renderToScreen ? null : readBuffer, this.clear);
 
 		if ( this.clearColor ) {
 
