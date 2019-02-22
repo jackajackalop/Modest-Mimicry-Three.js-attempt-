@@ -485,22 +485,18 @@ THREE.MarchingCubes = function ( resolution, material, enableUvs, enableColors )
 	// a fixed distance, determined by strength and subtract.
 
 	this.addBall = function ( ballx, bally, ballz, strength, subtract ) {
-
 		var sign = Math.sign( strength );
 		strength = Math.abs( strength );
-
 		// Let's solve the equation to find the radius:
 		// 1.0 / (0.000001 + radius^2) * strength - subtract = 0
 		// strength / (radius^2) = subtract
 		// strength = subtract * radius^2
 		// radius^2 = strength / subtract
 		// radius = sqrt(strength / subtract)
-
 		var radius = this.size * Math.sqrt( strength / subtract ),
 			zs = ballz * this.size,
 			ys = bally * this.size,
 			xs = ballx * this.size;
-
 		var min_z = Math.floor( zs - radius ); if ( min_z < 1 ) min_z = 1;
 		var max_z = Math.floor( zs + radius ); if ( max_z > this.size - 1 ) max_z = this.size - 1;
 		var min_y = Math.floor( ys - radius ); if ( min_y < 1 ) min_y = 1;
@@ -508,38 +504,66 @@ THREE.MarchingCubes = function ( resolution, material, enableUvs, enableColors )
 		var min_x = Math.floor( xs - radius ); if ( min_x < 1 ) min_x = 1;
 		var max_x = Math.floor( xs + radius ); if ( max_x > this.size - 1 ) max_x = this.size - 1;
 
-
 		// Don't polygonize in the outer layer because normals aren't
 		// well-defined there.
-
 		var x, y, z, y_offset, z_offset, fx, fy, fz, fz2, fy2, val;
-
 		for ( z = min_z; z < max_z; z ++ ) {
-
 			z_offset = this.size2 * z;
 			fz = z / this.size - ballz;
 			fz2 = fz * fz;
-
 			for ( y = min_y; y < max_y; y ++ ) {
-
 				y_offset = z_offset + this.size * y;
 				fy = y / this.size - bally;
 				fy2 = fy * fy;
-
 				for ( x = min_x; x < max_x; x ++ ) {
-
 					fx = x / this.size - ballx;
 					val = strength / ( 0.000001 + fx * fx + fy2 + fz2 ) - subtract;
 					if ( val > 0.0 ) this.field[ y_offset + x ] += val * sign;
-
 				}
-
 			}
-
 		}
-
 	};
 
+	this.addBox = function ( ballx, bally, ballz, strength, subtract ) {
+		var sign = Math.sign( strength );
+		strength = Math.abs( strength );
+		// Let's solve the equation to find the radius:
+		// 1.0 / (0.000001 + radius^2) * strength - subtract = 0
+		// strength / (radius^2) = subtract
+		// strength = subtract * radius^2
+		// radius^2 = strength / subtract
+		// radius = sqrt(strength / subtract)
+		var radius = this.size * Math.sqrt( strength / subtract ),
+			zs = ballz * this.size,
+			ys = bally * this.size,
+			xs = ballx * this.size;
+		var min_z = Math.floor( zs - radius ); if ( min_z < 1 ) min_z = 1;
+		var max_z = Math.floor( zs + radius ); if ( max_z > this.size - 1 ) max_z = this.size - 1;
+		var min_y = Math.floor( ys - radius ); if ( min_y < 1 ) min_y = 1;
+		var max_y = Math.floor( ys + radius ); if ( max_y > this.size - 1 ) max_y = this.size - 1;
+		var min_x = Math.floor( xs - radius ); if ( min_x < 1 ) min_x = 1;
+		var max_x = Math.floor( xs + radius ); if ( max_x > this.size - 1 ) max_x = this.size - 1;
+
+		// Don't polygonize in the outer layer because normals aren't
+		// well-defined there.
+		var x, y, z, y_offset, z_offset, fx, fy, fz, fz2, fy2, val;
+		for ( z = min_z; z < max_z; z ++ ) {
+			z_offset = this.size2 * z;
+			fz = z / this.size - ballz;
+			fz2 = fz * fz;
+			for ( y = min_y; y < max_y; y ++ ) {
+				y_offset = z_offset + this.size * y;
+				fy = y / this.size - bally;
+				fy2 = fy * fy;
+				for ( x = min_x; x < max_x; x ++ ) {
+					fx = x / this.size - ballx;
+					val = strength / ( 0.000001 + fx * fx + fy2 + fz2 ) - subtract;
+					if ( val > 0.0 ) this.field[ y_offset + x ] += val * sign;
+				}
+			}
+		}
+	};
+	
 	this.addPlaneX = function ( strength, subtract ) {
 
 		var x, y, z, xx, val, xdiv, cxy,
