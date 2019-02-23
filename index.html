@@ -5,42 +5,14 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	<style>
-		body {
-		  color: #fff;
-		  font-family: Monospace;
-		  font-size: 13px;
-		  text-align: center;
-
-		  background-color: #000;
-		  margin: 0px;
-		  overflow: hidden;
-		}
-
-		#info {
-		  color: #ffffff;
-		  position: absolute;
-		  top: 0px;
-		  width: 100%;
-		  padding: 5px;
-		}
-
-		a {
-		  color: gold;
-		}
-
-		#webglmessage {
-		  font-family: monospace;
-		  font-size: 13px;
-
-		  text-align: center;
-		  background: rgb(0, 0, 50);
-		  color: #fff;
-		  padding: 1em;
-
-		  width: 475px;
-		  margin: 5em auto 0;
-
-		  display: none;
+		head, body {
+		  	width:100%;
+            height:100%;
+            overflow: hidden;
+            top:0;
+            left:0;
+            margin:0;
+            padding:0;
 		}
 	</style>
 </head>
@@ -63,12 +35,10 @@
 	<script src="js/ShaderPass.js"></script>
 	<script src="js/CopyShader.js"></script>
 
-	<script src="js/MarchingCubes.js"></script>
-	<script src="js/MetaNotBallsShader.js"></script>
+	<script src="js/raymarcher.js"></script>
 
 	<script src="js/WebGL.js"></script>
 	<script src="js/dat.gui.min.js"></script>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
 
 	<script type="x-shader/x-vertex" id="vertexshader">
 		// switch on high precision floats
@@ -106,94 +76,29 @@
 		var SCREEN_WIDTH = window.innerWidth;
 		var SCREEN_HEIGHT = window.innerHeight - 2 * MARGIN;
 
-		var container, camera, scene, renderer;
-		var current_material;
-		var renderPass, metaPass, composer;
-		var light, pointLight, ambientLight;
-		var effect, resolution;
-		var effectController;
+		var rm;
 		var time = 0;
 		var clock = new THREE.Clock();
 		var primitives = [];
 
-		init();
-		animate();
-
 		function init() {
 
-			container = document.getElementById( 'container' );
-
-			// CAMERA
-
-			camera = new THREE.PerspectiveCamera( 45, SCREEN_WIDTH / SCREEN_HEIGHT, 1, 10000 );
-			camera.position.set( - 500, 500, 1500 );
-
-			// SCENE
-
-			scene = new THREE.Scene();
-			scene.background = new THREE.Color( 0x050505 );
-
-			// LIGHTS
-
-			light = new THREE.DirectionalLight( 0xffffff );
-			light.position.set( 0.5, 0.5, 1 );
-			scene.add( light );
-
-			pointLight = new THREE.PointLight( 0xff3300 );
-			pointLight.position.set( 0, 0, 100 );
-			scene.add( pointLight );
-
-			ambientLight = new THREE.AmbientLight( 0x080808 );
-			scene.add( ambientLight );
-
-			// var geometry = new THREE.SphereGeometry( 5, 32, 32 );
-			// var material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
-			// var sphere = new THREE.Mesh( geometry, material );
-			//scene.add( sphere );
-
-			// MATERIALS
-
-			// MARCHING CUBES
-			resolution = 28;
-
-			var current_material = 
-			{
-				m: new THREE.MeshPhongMaterial( { color: 0x000000, specular: 0x111111, shininess: 1 } ),
-				h: 0, s: 0, l: 1
-			};
-
-			// RENDERER
-
-			renderer = new THREE.WebGLRenderer();
-			renderer.setPixelRatio( window.devicePixelRatio );
-			renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
-
-			renderer.domElement.style.position = "absolute";
-			renderer.domElement.style.top = MARGIN + "px";
-			renderer.domElement.style.left = "0px";
-
-			container.appendChild( renderer.domElement );
-
-			renderer.gammaInput = true;
-			renderer.gammaOutput = true;
-			renderer.autoClear = false;
-
-			renderPass = new THREE.RenderPass(scene, camera);
-			renderPass.renderToScreen = true;
-			metaPass = new THREE.ShaderPass(THREE.MetaNotBallsShader);
-			metaPass.renderToScreen = true;
-			composer = new THREE.EffectComposer(renderer);
-			composer.addPass(renderPass);
-			composer.addPass(metaPass)
-			// CONTROLS
-			var controls = new THREE.OrbitControls( camera, renderer.domElement );
+			rm = new RayMarcher();
+	        rm.loadFragmentShader("fragment.glsl", onFragmentLoaded );
+	        document.body.appendChild( rm.domElement );
 
 			// GUI
-			setupGui();
+			// setupGui();
 
 			// EVENTS
 			window.addEventListener( 'resize', onWindowResize, false );
 			window.addEventListener( 'keydown', onKeydown, false );
+			onWindowResize();
+		}
+
+		function onFragmentLoaded(scope){
+			scope.setTexture("map", "matcap.png");
+			animate();
 		}
 
 		function newPrimitive(type){
@@ -215,34 +120,7 @@
 		}
 
 		function onWindowResize() {
-
-			SCREEN_WIDTH = window.innerWidth;
-			SCREEN_HEIGHT = window.innerHeight - 2 * MARGIN;
-
-			camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
-			camera.updateProjectionMatrix();
-
-			renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
-		}
-
-		function createShaderMaterial( id, light, ambientLight ) {
-
-			var shader = THREE.ShaderToon[ id ];
-
-			var u = THREE.UniformsUtils.clone( shader.uniforms );
-
-			var vs = shader.vertexShader;
-			var fs = shader.fragmentShader;
-
-			var material = new THREE.ShaderMaterial( { uniforms: u, vertexShader: vs, fragmentShader: fs } );
-
-			material.uniforms[ "uDirLightPos" ].value = light.position;
-			material.uniforms[ "uDirLightColor" ].value = light.color;
-
-			material.uniforms[ "uAmbientLightColor" ].value = ambientLight.color;
-
-			return material;
-
+        	rm.setSize( window.innerWidth, window.innerHeight );
 		}
 
 		function setupGui() {
@@ -299,35 +177,27 @@
 
 			h = gui.addFolder( "Simulation" );
 
-			h.add( effectController, "numBlobs", 1, 50, 1 );
 			h.add( effectController, "resolution", 14, 100, 1 );
 			h.add( effectController, "isolation", 10, 300, 1 );
 
 		}
 
 		function animate() {
-
-			requestAnimationFrame( animate );
-			render();
-		}
-
-		function render() {
-
 			var delta = clock.getDelta();
 			time += delta;
 
-			// lights
-			light.position.set( effectController.lx, effectController.ly, effectController.lz );
-			light.position.normalize();
+			requestAnimationFrame( animate );
 
-			pointLight.color.setHSL( effectController.lhue, effectController.lsaturation, effectController.llightness );
-
-			// render
-			composer.render(delta);
-			// renderer.clear();
-			// renderer.render( scene, camera );
-
+			primitives10 = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+			for(var i = 0; i<10; i++){
+				if(i<primitives.length) primitives10[i] = primitives[i];
+			}
+			rm.update(primitives10);
+			rm.render();
+			// composer.render(delta);
 		}
+
+		init();
 
 </script>
 
