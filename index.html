@@ -97,7 +97,6 @@
 		}
 
 		function onFragmentLoaded(scope){
-			scope.setTexture("map", "matcap.png");
 			animate();
 		}
 
@@ -113,9 +112,15 @@
 		function onKeydown(event){
 			var keyCode = event.which;
 			if(keyCode == 49){
-				newPrimitive("ball");
+				newPrimitive(0); //ball
 			}else if(keyCode == 50){
-				newPrimitive("box");
+				newPrimitive(1); //box
+			}else if(keyCode == 51){
+				newPrimitive(2); //cylinder
+			}else if(keyCode == 52){
+				newPrimitive(3); //cone
+			}else if(keyCode == 50){
+				newPrimitive(4); //torus
 			}
 		}
 
@@ -190,8 +195,9 @@
 
 			primitives10 = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
 			for(var i = 0; i<10; i++){
-				if(i<primitives.length) primitives10[i] = primitives[i];
+				if(i<primitives.length) primitives10[i] = primitives[i].shape;
 			}
+			// console.log(primitives10)
 			rm.update(primitives10);
 			rm.render();
 			// composer.render(delta);
