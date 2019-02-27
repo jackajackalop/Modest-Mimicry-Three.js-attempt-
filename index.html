@@ -102,7 +102,7 @@
 
 		function newPrimitive(type){
 			var newPrim = {
-				x: 0, y: 0, z:0,
+				x: 10*Math.sin(time), y: 0, z:0,
 				scale: 1,
 				shape: type
 			};
@@ -193,12 +193,16 @@
 
 			requestAnimationFrame( animate );
 
-			primitives10 = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+			var primitives10 = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+			var positionsX = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 			for(var i = 0; i<10; i++){
-				if(i<primitives.length) primitives10[i] = primitives[i].shape;
+				if(i<primitives.length){
+					primitives10[i] = primitives[i].shape;
+					positionsX[i] = primitives[i].x;
+				}
 			}
 			// console.log(primitives10)
-			rm.update(primitives10);
+			rm.update(primitives10, positionsX);
 			rm.render();
 			// composer.render(delta);
 		}

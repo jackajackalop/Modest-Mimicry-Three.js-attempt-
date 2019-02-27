@@ -1,4 +1,5 @@
 uniform int primitives[10];
+uniform float positionsX[10];
 uniform vec2 resolution;
 uniform float time;
 uniform sampler2D map;
@@ -145,26 +146,33 @@ vec2 field( vec3 position )
     float pnoise = 1. + perlin( noise );
 
     //box
-    vec2 rb = roundBox( position, vec3(2.0,2.0,2.0),  0.5, zero, quat + vec4( 1., 1., 1., PI / 4. ) );
+    //vec2 rb = roundBox( position, vec3(2.0,2.0,2.0),  0.5, zero, quat + vec4( 1., 1., 1., PI / 4. ) );
 
     //torus
-    vec2 to0 = torus( position, vec2( 4.0,.15), zero, vec4( 1., 0., 0., 0.) );
+    //vec2 to0 = torus( position, vec2( 4.0,.15), zero, vec4( 1., 0., 0., 0.) );
 
     //cone
-    vec2 co = cone( position, vec2( 4.0,.15), zero, vec4( 1., 0., 0., 0.)  );
+    //vec2 co = cone( position, vec2( 4.0,.15), zero, vec4( 1., 0., 0., 0.)  );
     //spheres
-    vec2 sre = sphere( position, 3.0, zero, quat );
+    //vec2 sre = sphere( position, 3.0, zero, quat );
 
+    vec3 pos = position;
     //composition
     bool first = true;
     vec2 res = vec2(0.0, 0.0);
     vec2 new;
     for(int i = 0; i<10; i++){
         if(primitives[i]>-1){
-            if(primitives[i]==0) new = sre;
-            else if(primitives[i]==1) new = rb;
-            else if(primitives[i]==2) new = co;
-            else if(primitives[i]==3)new = to0;
+            pos.x += positionsX[i];
+            if(primitives[i]==0){
+                new = sphere( pos, 3.0, zero, quat );
+            }else if(primitives[i]==1){
+                new = roundBox( pos, vec3(2.0,2.0,2.0),  0.5, zero, quat + vec4( 1., 1., 1., PI / 4. ) );
+            }else if(primitives[i]==2){
+                new = cone( pos, vec2( 4.0,.15), zero, vec4( 1., 0., 0., 0.)  );
+            }else if(primitives[i]==3){
+                new = torus( pos, vec2( 4.0,.15), zero, vec4( 1., 0., 0., 0.) );
+            }
             if(first){
                 res = new;
                 first = false;

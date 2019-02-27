@@ -58,6 +58,7 @@ var RayMarcher = function(){
 
             uniforms :{
                 primitives: {type: "i", value: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]},
+                positionsX: {type: "i", value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
                 resolution:{ type:"v2", value:new THREE.Vector2( this.width, this.height ) },
                 time:{ type:"f", value:0 },
                 randomSeed:{ type:"f", value:Math.random() },
@@ -161,11 +162,12 @@ var RayMarcher = function(){
         return this;
     }
 
-    function update(primitives){
+    function update(primitives, positionsX){
 
         if( this.material == null )return;
 
         if(primitives != undefined)this.material.uniforms.primitives.value = primitives;
+        if(positionsX != undefined) this.material.uniforms.positionsX.value = positionsX;
         this.material.uniforms.time.value = ( Date.now() - this.startTime ) * .001;
         this.material.uniforms.randomSeed.value = Math.random();
 
